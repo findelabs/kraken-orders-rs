@@ -14,3 +14,5 @@ chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1", features = ["full", "rt"] }
 url = "2.0"
 sha2 = "0.9.5"
+data-encoding = "2"
+hmac = "0.11"

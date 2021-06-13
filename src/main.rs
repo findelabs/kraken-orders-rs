@@ -6,6 +6,9 @@ use std::io::Write;
 use std::error;
 use url::Url;
 use sha2::{Sha256, Sha512, Digest};
+use data_encoding::BASE64;
+use std::error::Error;
+use hmac::{Hmac, Mac, NewMac};
 
 
 
@@ -35,6 +38,8 @@ struct RequestQueries<'a> {
     expiretm: Query<'a>,   // string, Expiration time
     validate: Query<'a>    // Validate inputs only. Do not submit order
 }
+
+type HmacSha512 = Hmac<Sha512>;
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() -> BoxResult<()> {
@@ -76,8 +81,6 @@ async fn main() -> BoxResult<()> {
     let mut kraken_url = Url::parse(base)?;
     kraken_url.set_path(path);
 
-    let private_key = "kQH5HW/8p1uGOVjbgWA7FunAmGO8lsSUXNsu3eow76sz84Q18fWxnyRzBHCd3pd5nE9qa99HAZtuZuj6F1huXg==";
-
     let mut queries = RequestQueries::new();
     queries.set_nonce("1616492376594");
     queries.set_type("buy");
@@ -86,21 +89,38 @@ async fn main() -> BoxResult<()> {
     queries.set_price("37500");
     queries.set_volume("1.25");
 
-    let postdata = queries.queries().unwrap();
-    println!("postdata: {}", postdata);
+    let private_key = &opts.value_of("private_key").unwrap();
 
-    let encoded = format!("{}{}", queries.nonce().unwrap(), postdata);
-    println!("encoded: {}", encoded);
+    signature(queries, private_key);
+
+    Ok(())
+
+}
+
+fn signature(mut queries: RequestQueries, private_key: &str) -> Result<String,Box<dyn Error + Send + Sync>> {
+    let path = "/0/private/AddOrder";
+    let postdata = queries.queries().unwrap();
+    let encoded = queries.nonce().unwrap().to_string() + &postdata;
 
     let mut hasher = Sha256::new();
     hasher.update(encoded);
     let result = hasher.finalize();
 
-    let message = format!("{}{:X}", path, result);
-    println!("message: {}", message);
+    let mut message = path.as_bytes().to_vec();
+    for elem in result {
+        message.push(elem);
+    }
 
-    Ok(())
+    let hmac_key = BASE64.decode(private_key.as_bytes())?;
+    let mut mac = Hmac::<Sha512>::new_from_slice(&hmac_key).expect("here");
+    mac.update(&message);
+    let mac_result = mac.finalize();
 
+    let b64 = BASE64.encode(&mac_result.into_bytes());
+
+    println!("{}", b64);
+
+    Ok(b64)
 }
 
 
