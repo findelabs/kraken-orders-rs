@@ -1,26 +1,166 @@
-use bytes::Bytes;
-use hyper::Client;
-use hyper_tls::HttpsConnector;
-use hyper::client::HttpConnector;
+use serde_json::{json, to_value, Value};
+use crate::errors::KrakenError;
+use sha2::{Sha256, Sha512, Digest};
+use std::error::Error;
+use hmac::{Hmac, Mac, NewMac};
+use chrono::offset::Utc;
+use reqwest::{header::{HeaderMap, HeaderValue, USER_AGENT, CONTENT_TYPE}};
 
+pub const API_URL: &str = "https://api.kraken.com";
+//pub const API_URL: &str = "http://localhost:8082";
+pub const API_VER: &str = "0";
 
-//type HttpsClient = Client<HttpsConnector<HttpConnector>, hyper::Body>;
-pub type HyperClient = Client<HttpsConnector<hyper::client::HttpConnector>>;
-
-pub struct Kraken {
+pub struct KrakenClient {
     last_request: i64,
-    api_secret: String,
-    https_client: HyperClient
+    api_key: Option<String>,
+    api_secret: Option<String>,
 }
 
-impl<'k> Kraken {
-    pub fn new(api_secret: &'k str) -> Self {
-        let https_client = Client::builder().build(HttpsConnector::new());
+impl<'k> KrakenClient {
+    pub fn new(api_key: &'k str, api_secret: &'k str) -> Self {
 
-        Kraken {
+        KrakenClient {
             last_request: 0,
-            api_secret: api_secret.to_string(),
-            https_client
+            api_key: Some(api_key.to_string()),
+            api_secret: Some(api_secret.to_string()),
         }
+    }
+
+    pub fn signature(&self, path: &str, nonce: u64, payload: &str) -> Result<String,Box<dyn Error + Send + Sync>> {
+        // Get message payload
+        let message = format!("{}{}", nonce, &payload);
+
+        // Get hash of message
+        let hash_digest = Sha256::digest(message.as_bytes());
+
+        // Get the private key
+        let private_key = self.api_secret.as_ref().expect("Failed to get api_secret");
+
+        // Decode private key
+        let private_key_decoded = base64::decode(private_key)?;
+
+        // Create hmac with private_key
+        let mut mac = Hmac::<Sha512>::new_from_slice(&private_key_decoded).expect("here");
+
+        // Create data from path
+        let mut hmac_data = path.to_string().into_bytes();
+
+        // Add payload to hmac
+        hmac_data.append(&mut hash_digest.to_vec());
+
+        // Add payload to mac
+        mac.update(&hmac_data);
+
+        // Encode final payload
+        let b64 = base64::encode(mac.finalize().into_bytes());
+
+        // Return base64 string
+        Ok(b64)
+    }
+
+    pub async fn headers(&self, sig: &str) -> Result<HeaderMap, KrakenError> {
+
+        // Create HeaderMap
+        let mut headers = HeaderMap::new();
+
+        // Get api key 
+        let api_key = match HeaderValue::from_str(self.api_key.as_ref().expect("Failed unwraping api_key")) {
+            Ok(h) => Ok(h),
+            Err(_) => Err(KrakenError::HeaderError)
+        };
+
+        // Add signature to headermap
+        let api_sign = match HeaderValue::from_str(&sig) {
+            Ok(h) => Ok(h),
+            Err(_) => Err(KrakenError::HeaderError)
+        };
+
+
+        // Add all headers
+        headers.insert("API-Key", api_key?);
+        headers.insert("API-Sign", api_sign?);
+        headers.insert(USER_AGENT, HeaderValue::from_str("kraken-rs").unwrap());
+        headers.insert(CONTENT_TYPE, HeaderValue::from_str("application/x-www-form-urlencoded").unwrap());
+
+        // Return headers
+        Ok(headers)
+    }
+
+    pub async fn add_order(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.private("AddOrder", Some(payload)).await?)
+    }
+
+    pub async fn private(&self, path: &str, payload: Option<Value>) -> Result<String, KrakenError> {
+
+        // Error if api_key or api_secret is missing
+        if self.api_key.is_none() {
+            return Err(KrakenError::ApiKey)
+        } else if self.api_secret.is_none() {
+            return Err(KrakenError::ApiSecret)
+        };
+
+
+        // Insert nonce into data
+        let nonce = Utc::now().timestamp_millis() as u64;
+        let payload = match payload {
+            Some(mut p) => {
+                let payload = p.as_object_mut().unwrap();
+                payload.insert(String::from("nonce"), json!(nonce.to_string()));
+                to_value(payload).expect("Failed converting Map to Value")
+            },
+            None => json!({"nonce": nonce.to_string()})
+        };
+                
+//        let payload = to_value(payload).expect("Failed converting Map to Value");
+
+        // Create body as string
+        let body = match serde_urlencoded::to_string(&payload) {
+            Ok(b) => b,
+            Err(_) => return Err(KrakenError::JsonError)
+        };
+
+        log::info!("body: {}", &body);
+
+        // Get signature of payload
+        let path = format!("/{}/private/{}", API_VER, path);
+        let url = format!("{}{}", API_URL, &path);
+        let sig = match self.signature(&path, nonce, &body) {
+            Ok(s) => s,
+            Err(_) => return Err(KrakenError::Signature)
+        };
+
+        let headers = self.headers(&sig).await?;
+
+        log::info!("headers: {:?}", headers);
+
+        let client = reqwest::Client::new()
+            .post(&url)
+            .headers(headers)
+            .body(body);
+
+        println!("{:?}", client);
+
+        match client.send().await {
+            Ok(m) => match m.status().as_u16() {
+                429 => Ok("Hit rate limiter".to_owned()),
+                200 => {
+                    let body = match m.text().await {
+                        Ok(b) => Ok(b),
+                        Err(_) => Err(KrakenError::BadBody)
+                    };
+                    log::info!("Got 200, body: {}", body?);
+                    Ok("Post Ok".to_owned())
+                },
+                _ => Ok("Got weird result".to_owned())
+            },
+            Err(e) => {
+                log::error!("Caught error posting: {}", e);
+                return Err(KrakenError::PostError)
+            }
+        }
+    }
+
+    pub async fn balance(&self) -> Result<String, KrakenError> {
+        Ok(self.private("Balance", None).await?)
     }
 }
