@@ -57,3 +57,6 @@ impl From<bson::ser::Error> for MyError {
     }
 }
 */
+
+// Example of how to wrap errors into krakenerror
+// https://docs.rs/backoff/0.3.0/src/backoff/error.rs.html#9-16
