@@ -2,16 +2,16 @@ use chrono::Local;
 use clap::{crate_version, App, Arg};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
-use std::io::Write;
 use std::error;
+use std::io::Write;
 //use queries::RequestQueries;
-use serde_json::{to_value, Value};
-use serde_json::map::Map;
 use crate::kraken::KrakenClient;
+use serde_json::map::Map;
+use serde_json::{to_value, Value};
 
 //mod queries;
-mod kraken;
 mod errors;
+mod kraken;
 
 type BoxResult<T> = std::result::Result<T, Box<dyn error::Error + Send + Sync>>;
 
@@ -57,16 +57,15 @@ async fn main() -> BoxResult<()> {
         .parse_default_env()
         .init();
 
-
-//    let mut kraken_url = Url::parse(base)?;
-//    kraken_url.set_path(path);
-//
-//    let mut queries = RequestQueries::new();
-//    queries.set_type("buy");
-//    queries.set_ordertype("limit");
-//    queries.set_pair("XBTUSD");
-//    queries.set_price("37500");
-//    queries.set_volume("1.25");
+    //    let mut kraken_url = Url::parse(base)?;
+    //    kraken_url.set_path(path);
+    //
+    //    let mut queries = RequestQueries::new();
+    //    queries.set_type("buy");
+    //    queries.set_ordertype("limit");
+    //    queries.set_pair("XBTUSD");
+    //    queries.set_price("37500");
+    //    queries.set_volume("1.25");
 
     let api_secret = &opts.value_of("api_secret").unwrap();
     let api_key = &opts.value_of("api_key").unwrap();
@@ -79,11 +78,9 @@ async fn main() -> BoxResult<()> {
     payload.insert("pair".to_owned(), Value::String("XBTUSD".to_owned()));
     payload.insert("price".to_owned(), Value::String("37500".to_owned()));
     payload.insert("volume".to_owned(), Value::String("1.25".to_owned()));
-    
-//    let result = client.add_order(to_value(payload)?).await?;
-    let result = client.balance().await?;
+
+    let result = client.trade_volume(None).await?;
     println!("{}", result);
 
     Ok(())
-
 }
