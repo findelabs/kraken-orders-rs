@@ -1,6 +1,8 @@
 //use serde_json::error::Error as SerdeError;
 use std::fmt;
 
+// https://stevedonovan.github.io/rust-gentle-intro/6-error-handling.html
+
 #[derive(Debug)]
 pub enum KrakenError {
     ApiKey,
@@ -14,7 +16,7 @@ pub enum KrakenError {
 }
 
 pub struct RequestError {
-    details: String,
+    details: String
 }
 
 impl std::error::Error for KrakenError {}
