@@ -12,11 +12,7 @@ pub enum KrakenError {
     JsonError,
     HeaderError,
     BadBody,
-    RequestError,
-}
-
-pub struct RequestError {
-    details: String
+    RequestError(String)
 }
 
 impl std::error::Error for KrakenError {}
@@ -31,34 +27,16 @@ impl fmt::Display for KrakenError {
             KrakenError::JsonError => f.write_str("Error converting payload to string"),
             KrakenError::HeaderError => f.write_str("Error generating headers for request"),
             KrakenError::BadBody => f.write_str("Could not unpack response body"),
-            KrakenError::RequestError => write!(f, "{}", self),
+            KrakenError::RequestError(ref e) => f.write_str(e)
         }
     }
 }
 
-impl fmt::Display for RequestError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.details)
-    }
-}
-
-impl RequestError {
-    pub fn new(msg: &str) -> RequestError {
-        RequestError {
-            details: msg.to_string(),
-        }
-    }
-}
-
-/*
-impl From<bson::ser::Error> for MyError {
-    fn from(e: bson::ser::Error) -> Self {
-        match e {
-            _ => MyError::BsonError,
-        }
-    }
-}
-*/
+//impl std::convert::From<reqwest::Error> for KrakenError {
+//    fn from(e: reqwest::Error) -> Self {
+//        KrakenError::ReqwestError(e)
+//    }
+//}
 
 // Example of how to wrap errors into krakenerror
 // https://docs.rs/backoff/0.3.0/src/backoff/error.rs.html#9-16

@@ -1,4 +1,3 @@
-use crate::errors::KrakenError;
 use crate::errors::*;
 use chrono::offset::Utc;
 use hmac::{Hmac, Mac, NewMac};
@@ -6,12 +5,15 @@ use reqwest::header::{HeaderMap, HeaderValue, CONTENT_TYPE, USER_AGENT};
 use serde_json::{json, to_value, Value};
 use sha2::{Digest, Sha256, Sha512};
 use std::error::Error;
+use core::time::Duration;
+
 
 pub const API_URL: &str = "https://api.kraken.com";
 //pub const API_URL: &str = "http://localhost:8082";
 pub const API_VER: &str = "0";
 
 pub struct KrakenClient {
+    client: reqwest::Client,
     last_request: i64,
     api_key: Option<String>,
     api_secret: Option<String>,
@@ -19,7 +21,13 @@ pub struct KrakenClient {
 
 impl<'k> KrakenClient {
     pub fn new(api_key: &'k str, api_secret: &'k str) -> Self {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::new(10, 0))
+            .build()
+            .expect("Failed to build client");
+
         KrakenClient {
+            client,
             last_request: 0,
             api_key: Some(api_key.to_string()),
             api_secret: Some(api_secret.to_string()),
@@ -127,7 +135,7 @@ impl<'k> KrakenClient {
 
         let headers = self.headers(&sig).await?;
 
-        let client = reqwest::Client::new()
+        let client = self.client
             .post(&url)
             .headers(headers)
             .body(body);
@@ -136,15 +144,24 @@ impl<'k> KrakenClient {
             Ok(m) => match m.status().as_u16() {
                 429 => {
                     let text = m.text().await.expect("failed");
-                    Err(RequestError::new(&text))
+                    Err(KrakenError::RequestError(text))
                 }
                 200 => {
-                    let body = match m.text().await {
-                        Ok(b) => Ok(b),
-                        Err(_) => Err(KrakenError::BadBody),
+                    let body = match m.json::<Value>().await {
+                        Ok(b) => b,
+                        Err(_) => {
+                            return Err(KrakenError::BadBody)
+                        }
                     };
-                    log::info!("Got 200, body: {}", body?);
-                    Ok("Post Ok".to_owned())
+
+                    // Check to see if error field is empty or not
+                    match &body["error"].as_array().expect("Missing error field").len() {
+                        0 => {
+                            log::info!("Got 200, body: {}", body.to_string());
+                            Ok(body["result"].to_string())
+                        },
+                        _ => Err(KrakenError::RequestError(body.to_string()))
+                    }
                 }
                 _ => Ok("Got weird result".to_owned()),
             },
@@ -155,66 +172,82 @@ impl<'k> KrakenClient {
         }
     }
 
+    #[allow(dead_code)]
     pub async fn add_order(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("AddOrder", Some(payload)).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn balance(&self) -> Result<String, KrakenError> {
         Ok(self.private("Balance", None).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn trade_balance(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("TradeBalance", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn open_orders(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("OpenOrders", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn closed_orders(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("ClosedOrders", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn query_orders(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("QueryOrders", Some(payload)).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn trades_history(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("TradesHistory", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn query_trades(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("QueryTrades", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn open_positions(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("OpenPositions", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn ledgers(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("Ledgers", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn query_ledgers(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("QueryLedgers", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn trade_volume(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("TradeVolume", payload).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn add_export(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("AddExport", Some(payload)).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn export_status(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("ExportStatus", Some(payload)).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn retrieve_export(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("RetrieveExport", Some(payload)).await?)
     }
 
+    #[allow(dead_code)]
     pub async fn remove_export(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("RemoveExport", Some(payload)).await?)
     }

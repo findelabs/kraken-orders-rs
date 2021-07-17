@@ -79,7 +79,7 @@ async fn main() -> BoxResult<()> {
     payload.insert("price".to_owned(), Value::String("37500".to_owned()));
     payload.insert("volume".to_owned(), Value::String("1.25".to_owned()));
 
-    let result = client.trade_volume(None).await?;
+    let result = client.open_orders(None).await?;
     println!("{}", result);
 
     Ok(())
