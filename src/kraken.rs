@@ -7,7 +7,6 @@ use sha2::{Digest, Sha256, Sha512};
 use std::error::Error;
 use core::time::Duration;
 
-
 pub const API_URL: &str = "https://api.kraken.com";
 pub const API_VER: &str = "0";
 
@@ -73,7 +72,7 @@ impl<'k> KrakenClient {
         Ok(b64)
     }
 
-    pub async fn headers(&self, sig: &str) -> Result<HeaderMap, KrakenError> {
+    pub async fn headers(&self, sig: Option<String>) -> Result<HeaderMap, KrakenError> {
         // Create HeaderMap
         let mut headers = HeaderMap::new();
 
@@ -85,14 +84,15 @@ impl<'k> KrakenClient {
             };
 
         // Add signature to headermap
-        let api_sign = match HeaderValue::from_str(&sig) {
-            Ok(h) => Ok(h),
-            Err(_) => Err(KrakenError::HeaderError),
+        if let Some(sig) = sig {
+            match HeaderValue::from_str(&sig) {
+                Ok(h) => headers.insert("API-Sign", h),
+                Err(_) => return Err(KrakenError::HeaderError),
+            };
         };
 
         // Add all headers
         headers.insert("API-Key", api_key?);
-        headers.insert("API-Sign", api_sign?);
         headers.insert(USER_AGENT, HeaderValue::from_str("kraken-rs").unwrap());
         headers.insert(
             CONTENT_TYPE,
@@ -103,9 +103,9 @@ impl<'k> KrakenClient {
         Ok(headers)
     }
 
-    pub async fn post(&self, url: String, sig: String, payload: String) -> Result<String, KrakenError> {
+    pub async fn post(&self, url: String, sig: Option<String>, payload: String) -> Result<String, KrakenError> {
 
-        let headers = self.headers(&sig).await?;
+        let headers = self.headers(sig).await?;
 
         let client = self.client
             .post(url)
@@ -144,6 +144,20 @@ impl<'k> KrakenClient {
         }
     }
 
+    pub async fn public(&self, path: &str, payload: Option<Value>) -> Result<String, KrakenError> {
+
+        // Create body as string
+        let body = match serde_urlencoded::to_string(&payload) {
+            Ok(b) => b,
+            Err(_) => return Err(KrakenError::JsonError),
+        };
+
+        // Get signature of payload
+        let path = format!("/{}/public/{}", API_VER, path);
+        let url = format!("{}{}", API_URL, &path);
+        Ok(self.post(url, None, body).await?)
+    }
+
     pub async fn private(&self, path: &str, payload: Option<Value>) -> Result<String, KrakenError> {
         // Error if api_key or api_secret is missing
         if self.api_key.is_none() {
@@ -177,7 +191,7 @@ impl<'k> KrakenClient {
             Err(_) => return Err(KrakenError::Signature),
         };
 
-        Ok(self.post(url, sig, body).await?)
+        Ok(self.post(url, Some(sig), body).await?)
     }
 
     #[allow(dead_code)]
