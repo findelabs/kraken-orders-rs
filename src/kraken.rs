@@ -11,6 +11,7 @@ use core::time::Duration;
 pub const API_URL: &str = "https://api.kraken.com";
 pub const API_VER: &str = "0";
 
+#[derive(Debug, Clone)]
 pub struct KrakenClient {
     client: reqwest::Client,
     last_request: i64,
