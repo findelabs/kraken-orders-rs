@@ -273,4 +273,9 @@ impl<'k> KrakenClient {
     pub async fn remove_export(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("RemoveExport", Some(payload)).await?)
     }
+
+    #[allow(dead_code)]
+    pub async fn assets(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("Assets", Some(payload)).await?)
+    }
 }
