@@ -129,7 +129,7 @@ impl<'k> KrakenClient {
                     // Check to see if error field is empty or not
                     match &body["error"].as_array().expect("Missing error field").len() {
                         0 => {
-                            log::info!("Got 200, body: {}", body.to_string());
+                            log::debug!("Got 200, body: {}", body.to_string());
                             Ok(body["result"].to_string())
                         },
                         _ => Err(KrakenError::RequestError(body.to_string()))
