@@ -9,7 +9,6 @@ use core::time::Duration;
 
 
 pub const API_URL: &str = "https://api.kraken.com";
-//pub const API_URL: &str = "http://localhost:8082";
 pub const API_VER: &str = "0";
 
 pub struct KrakenClient {
@@ -21,6 +20,7 @@ pub struct KrakenClient {
 
 impl<'k> KrakenClient {
     pub fn new(api_key: &'k str, api_secret: &'k str) -> Self {
+
         let client = reqwest::Client::builder()
             .timeout(Duration::new(10, 0))
             .build()
@@ -40,6 +40,7 @@ impl<'k> KrakenClient {
         nonce: u64,
         payload: &str,
     ) -> Result<String, Box<dyn Error + Send + Sync>> {
+
         // Get message payload
         let message = format!("{}{}", nonce, &payload);
 
@@ -100,6 +101,48 @@ impl<'k> KrakenClient {
         // Return headers
         Ok(headers)
     }
+
+    pub async fn post(&self, url: String, sig: String, payload: String) -> Result<String, KrakenError> {
+
+        let headers = self.headers(&sig).await?;
+
+        let client = self.client
+            .post(url)
+            .headers(headers)
+            .body(payload);
+
+        match client.send().await {
+            Ok(m) => match m.status().as_u16() {
+                429 => {
+                    let text = m.text().await.expect("failed");
+                    Err(KrakenError::RequestError(text))
+                }
+                200 => {
+                    let body = match m.json::<Value>().await {
+                        Ok(b) => b,
+                        Err(_) => {
+                            return Err(KrakenError::BadBody)
+                        }
+                    };
+
+                    // Check to see if error field is empty or not
+                    match &body["error"].as_array().expect("Missing error field").len() {
+                        0 => {
+                            log::info!("Got 200, body: {}", body.to_string());
+                            Ok(body["result"].to_string())
+                        },
+                        _ => Err(KrakenError::RequestError(body.to_string()))
+                    }
+                }
+                _ => Ok("Got weird result".to_owned()),
+            },
+            Err(e) => {
+                log::error!("Caught error posting: {}", e);
+                return Err(KrakenError::PostError);
+            }
+        }
+    }
+
     pub async fn private(&self, path: &str, payload: Option<Value>) -> Result<String, KrakenError> {
         // Error if api_key or api_secret is missing
         if self.api_key.is_none() {
@@ -133,43 +176,7 @@ impl<'k> KrakenClient {
             Err(_) => return Err(KrakenError::Signature),
         };
 
-        let headers = self.headers(&sig).await?;
-
-        let client = self.client
-            .post(&url)
-            .headers(headers)
-            .body(body);
-
-        match client.send().await {
-            Ok(m) => match m.status().as_u16() {
-                429 => {
-                    let text = m.text().await.expect("failed");
-                    Err(KrakenError::RequestError(text))
-                }
-                200 => {
-                    let body = match m.json::<Value>().await {
-                        Ok(b) => b,
-                        Err(_) => {
-                            return Err(KrakenError::BadBody)
-                        }
-                    };
-
-                    // Check to see if error field is empty or not
-                    match &body["error"].as_array().expect("Missing error field").len() {
-                        0 => {
-                            log::info!("Got 200, body: {}", body.to_string());
-                            Ok(body["result"].to_string())
-                        },
-                        _ => Err(KrakenError::RequestError(body.to_string()))
-                    }
-                }
-                _ => Ok("Got weird result".to_owned()),
-            },
-            Err(e) => {
-                log::error!("Caught error posting: {}", e);
-                return Err(KrakenError::PostError);
-            }
-        }
+        Ok(self.post(url, sig, body).await?)
     }
 
     #[allow(dead_code)]
