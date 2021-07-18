@@ -275,7 +275,12 @@ impl<'k> KrakenClient {
     }
 
     #[allow(dead_code)]
-    pub async fn assets(&self, payload: Value) -> Result<String, KrakenError> {
-        Ok(self.public("Assets", Some(payload)).await?)
+    pub async fn assets(&self, payload: Option<Value>) -> Result<String, KrakenError> {
+        Ok(self.public("Assets", payload).await?)
+    }
+
+    #[allow(dead_code)]
+    pub async fn ticker(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("Ticker", Some(payload)).await?)
     }
 }
