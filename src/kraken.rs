@@ -264,7 +264,7 @@ impl<'k> KrakenClient {
     }
     
     pub async fn asset_pairs(&self, payload: Option<Value>) -> Result<String, KrakenError> {
-        Ok(self.public("Assets", payload).await?)
+        Ok(self.public("AssetPairs", payload).await?)
     }
     
     pub async fn ticker(&self, payload: Value) -> Result<String, KrakenError> {
