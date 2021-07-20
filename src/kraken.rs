@@ -194,93 +194,96 @@ impl<'k> KrakenClient {
         Ok(self.post(url, Some(sig), body).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn add_order(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("AddOrder", Some(payload)).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn balance(&self) -> Result<String, KrakenError> {
         Ok(self.private("Balance", None).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn trade_balance(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("TradeBalance", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn open_orders(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("OpenOrders", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn closed_orders(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("ClosedOrders", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn query_orders(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("QueryOrders", Some(payload)).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn trades_history(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("TradesHistory", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn query_trades(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("QueryTrades", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn open_positions(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("OpenPositions", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn ledgers(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("Ledgers", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn query_ledgers(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("QueryLedgers", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn trade_volume(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.private("TradeVolume", payload).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn add_export(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("AddExport", Some(payload)).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn export_status(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("ExportStatus", Some(payload)).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn retrieve_export(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("RetrieveExport", Some(payload)).await?)
     }
 
-    #[allow(dead_code)]
     pub async fn remove_export(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.private("RemoveExport", Some(payload)).await?)
     }
 
-    #[allow(dead_code)]
+    // Public Endpoints
     pub async fn assets(&self, payload: Option<Value>) -> Result<String, KrakenError> {
         Ok(self.public("Assets", payload).await?)
     }
-
-    #[allow(dead_code)]
+    
+    pub async fn asset_pairs(&self, payload: Option<Value>) -> Result<String, KrakenError> {
+        Ok(self.public("Assets", payload).await?)
+    }
+    
     pub async fn ticker(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.public("Ticker", Some(payload)).await?)
+    }
+        
+    pub async fn ohlc(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("OHLC", Some(payload)).await?)
+    }
+
+    pub async fn depth(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("Depth", Some(payload)).await?)
+    }
+
+    pub async fn trades(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("Trades", Some(payload)).await?)
+    }
+
+    pub async fn spread(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("Spread", Some(payload)).await?)
     }
 }
