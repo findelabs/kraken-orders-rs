@@ -194,10 +194,6 @@ impl<'k> KrakenClient {
         Ok(self.post(url, Some(sig), body).await?)
     }
 
-    pub async fn add_order(&self, payload: Value) -> Result<String, KrakenError> {
-        Ok(self.private("AddOrder", Some(payload)).await?)
-    }
-
     pub async fn balance(&self) -> Result<String, KrakenError> {
         Ok(self.private("Balance", None).await?)
     }
@@ -285,5 +281,21 @@ impl<'k> KrakenClient {
 
     pub async fn spread(&self, payload: Value) -> Result<String, KrakenError> {
         Ok(self.public("Spread", Some(payload)).await?)
+    }
+
+    pub async fn add_order(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.private("AddOrder", Some(payload)).await?)
+    }
+
+    pub async fn cancel_order(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("CancelOrder", Some(payload)).await?)
+    }
+
+    pub async fn cancel_all(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("CancelAll", Some(payload)).await?)
+    }
+
+    pub async fn cancel_all_orders_after(&self, payload: Value) -> Result<String, KrakenError> {
+        Ok(self.public("CancelAllOrdersAfter", Some(payload)).await?)
     }
 }
