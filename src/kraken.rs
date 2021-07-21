@@ -288,14 +288,14 @@ impl<'k> KrakenClient {
     }
 
     pub async fn cancel_order(&self, payload: Value) -> Result<String, KrakenError> {
-        Ok(self.public("CancelOrder", Some(payload)).await?)
+        Ok(self.private("CancelOrder", Some(payload)).await?)
     }
 
     pub async fn cancel_all(&self, payload: Value) -> Result<String, KrakenError> {
-        Ok(self.public("CancelAll", Some(payload)).await?)
+        Ok(self.private("CancelAll", Some(payload)).await?)
     }
 
     pub async fn cancel_all_orders_after(&self, payload: Value) -> Result<String, KrakenError> {
-        Ok(self.public("CancelAllOrdersAfter", Some(payload)).await?)
+        Ok(self.private("CancelAllOrdersAfter", Some(payload)).await?)
     }
 }
