@@ -1,5 +1,12 @@
 //use serde_json::error::Error as SerdeError;
 use std::fmt;
+use axum::{
+    body::Body,
+    body::{self, Bytes},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+
 
 // https://stevedonovan.github.io/rust-gentle-intro/6-error-handling.html
 
@@ -31,6 +38,19 @@ impl fmt::Display for KrakenError {
         }
     }
 }
+
+impl IntoResponse for KrakenError {
+    fn into_response(self) -> Response {
+        let payload = self.to_string();
+        let body = body::boxed(body::Full::from(payload));
+
+        Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(body)
+            .unwrap()
+    }
+}
+
 
 //impl std::convert::From<reqwest::Error> for KrakenError {
 //    fn from(e: reqwest::Error) -> Self {
