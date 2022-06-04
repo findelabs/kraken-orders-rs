@@ -12,6 +12,7 @@ pub const API_URL: &str = "https://api.kraken.com";
 pub const API_VER: &str = "0";
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct KrakenClient {
     client: reqwest::Client,
     last_request: i64,
@@ -208,7 +209,22 @@ impl<'k> KrakenClient {
     }
 
     pub async fn trade_balance(&self, payload: Option<Value>) -> Result<String, KrakenError> {
-        Ok(self.private("TradeBalance", payload).await?)
+        use serde::Deserialize;
+        
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct FORMAT {
+            asset: String
+        }
+
+        let payload_parsed = match payload {
+            Some(p) => {
+                let _: FORMAT = serde_json::from_value(p.clone()).unwrap();
+                Some(p)
+            },
+            None => None
+        };
+        Ok(self.private("TradeBalance", payload_parsed).await?)
     }
 
     pub async fn open_orders(&self, payload: Option<Value>) -> Result<String, KrakenError> {
