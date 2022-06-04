@@ -8,7 +8,6 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-
 // https://stevedonovan.github.io/rust-gentle-intro/6-error-handling.html
 
 #[derive(Debug)]
