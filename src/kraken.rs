@@ -16,13 +16,13 @@ pub struct KrakenClient {
     client: reqwest::Client,
     last_request: i64,
     api_key: String,
-    api_secret: String,
+    private_key: String,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct KrakenBuilder {
     api_key: String,
-    api_secret: String
+    private_key: String
 }
 
 impl KrakenBuilder {
@@ -31,8 +31,8 @@ impl KrakenBuilder {
         self
     }
 
-    pub fn api_secret(mut self, arg: &str) -> Self {
-        self.api_secret = arg.to_string();
+    pub fn private_key(mut self, arg: &str) -> Self {
+        self.private_key = arg.to_string();
         self
     }
 
@@ -46,7 +46,7 @@ impl KrakenBuilder {
             client,
             last_request: 0,
             api_key: self.api_key.to_string(),
-            api_secret: self.api_secret.to_string(),
+            private_key: self.private_key.to_string(),
         })
     }
 }
@@ -66,7 +66,7 @@ impl<'k> KrakenClient {
         let hash_digest = Sha256::digest(message.as_bytes());
 
         // Decode private key
-        let private_key_decoded = base64::decode(&self.api_secret)?;
+        let private_key_decoded = base64::decode(&self.private_key)?;
 
         // Create hmac with private_key
         let mut mac = Hmac::<Sha512>::new_from_slice(&private_key_decoded).expect("here");
