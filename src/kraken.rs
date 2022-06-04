@@ -6,6 +6,7 @@ use serde_json::{json, to_value, Value};
 use sha2::{Digest, Sha256, Sha512};
 use std::error::Error;
 use core::time::Duration;
+use std::convert::Infallible;
 
 pub const API_URL: &str = "https://api.kraken.com";
 pub const API_VER: &str = "0";
@@ -14,26 +15,43 @@ pub const API_VER: &str = "0";
 pub struct KrakenClient {
     client: reqwest::Client,
     last_request: i64,
-    api_key: Option<String>,
-    api_secret: Option<String>,
+    api_key: String,
+    api_secret: String,
 }
 
-impl<'k> KrakenClient {
-    pub fn new(api_key: &'k str, api_secret: &'k str) -> Self {
+#[derive(Debug, Clone, Default)]
+pub struct KrakenBuilder {
+    api_key: String,
+    api_secret: String
+}
 
+impl KrakenBuilder {
+    pub fn api_key(mut self, arg: &str) -> Self {
+        self.api_key = arg.to_string();
+        self
+    }
+
+    pub fn api_secret(mut self, arg: &str) -> Self {
+        self.api_secret = arg.to_string();
+        self
+    }
+
+    pub fn build(&mut self) -> Result<KrakenClient, Infallible> {
         let client = reqwest::Client::builder()
             .timeout(Duration::new(10, 0))
             .build()
             .expect("Failed to build client");
 
-        KrakenClient {
+        Ok(KrakenClient {
             client,
             last_request: 0,
-            api_key: Some(api_key.to_string()),
-            api_secret: Some(api_secret.to_string()),
-        }
+            api_key: self.api_key.to_string(),
+            api_secret: self.api_secret.to_string(),
+        })
     }
+}
 
+impl<'k> KrakenClient {
     pub fn signature(
         &self,
         path: &str,
@@ -47,11 +65,8 @@ impl<'k> KrakenClient {
         // Get hash of message
         let hash_digest = Sha256::digest(message.as_bytes());
 
-        // Get the private key
-        let private_key = self.api_secret.as_ref().expect("Failed to get api_secret");
-
         // Decode private key
-        let private_key_decoded = base64::decode(private_key)?;
+        let private_key_decoded = base64::decode(&self.api_secret)?;
 
         // Create hmac with private_key
         let mut mac = Hmac::<Sha512>::new_from_slice(&private_key_decoded).expect("here");
@@ -78,7 +93,7 @@ impl<'k> KrakenClient {
 
         // Get api key
         let api_key =
-            match HeaderValue::from_str(self.api_key.as_ref().expect("Failed unwraping api_key")) {
+            match HeaderValue::from_str(&self.api_key) {
                 Ok(h) => Ok(h),
                 Err(_) => Err(KrakenError::HeaderError),
             };
@@ -159,12 +174,6 @@ impl<'k> KrakenClient {
     }
 
     pub async fn private(&self, path: &str, payload: Option<Value>) -> Result<String, KrakenError> {
-        // Error if api_key or api_secret is missing
-        if self.api_key.is_none() {
-            return Err(KrakenError::ApiKey);
-        } else if self.api_secret.is_none() {
-            return Err(KrakenError::ApiSecret);
-        };
 
         // Insert nonce into data
         let nonce = Utc::now().timestamp_millis() as u64;
