@@ -20,12 +20,14 @@ pub enum Payloads {
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
+#[serde(deny_unknown_fields)]
 struct TradeBalance {
     asset: String
 }
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
+#[serde(deny_unknown_fields)]
 struct OpenOrders {
     trades: Option<bool>,
     userref: Option<u32>
@@ -33,6 +35,7 @@ struct OpenOrders {
 
 #[derive(Deserialize)]
 #[allow(dead_code)]
+#[serde(deny_unknown_fields)]
 struct ClosedOrders {
     trades: Option<bool>,
     userref: Option<u32>,
