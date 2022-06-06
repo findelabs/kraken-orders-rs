@@ -19,7 +19,8 @@ pub enum KrakenError {
     JsonError,
     HeaderError,
     BadBody,
-    RequestError(String)
+    RequestError(String),
+    PayloadError(serde_json::Error),
 }
 
 impl std::error::Error for KrakenError {}
@@ -34,7 +35,8 @@ impl fmt::Display for KrakenError {
             KrakenError::JsonError => f.write_str("Error converting payload to string"),
             KrakenError::HeaderError => f.write_str("Error generating headers for request"),
             KrakenError::BadBody => f.write_str("Could not unpack response body"),
-            KrakenError::RequestError(ref e) => f.write_str(e)
+            KrakenError::RequestError(ref e) => f.write_str(e),
+            KrakenError::PayloadError(ref e) => write!(f, "{}", e),
         }
     }
 }
@@ -48,6 +50,12 @@ impl IntoResponse for KrakenError {
             .status(StatusCode::INTERNAL_SERVER_ERROR)
             .body(body)
             .unwrap()
+    }
+}
+
+impl From<serde_json::Error> for KrakenError {
+    fn from(err: serde_json::Error) -> KrakenError {
+        KrakenError::PayloadError(err)
     }
 }
 

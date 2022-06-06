@@ -7,9 +7,28 @@ use sha2::{Digest, Sha256, Sha512};
 use std::error::Error;
 use core::time::Duration;
 use std::convert::Infallible;
+use serde::Deserialize;
 
 pub const API_URL: &str = "https://api.kraken.com";
 pub const API_VER: &str = "0";
+
+pub enum Payloads {
+    TradeBalance,
+    OpenOrders
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct TradeBalance {
+    asset: String
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct OpenOrders {
+    trades: bool,
+    userref: u32
+}
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -52,7 +71,7 @@ impl KrakenBuilder {
     }
 }
 
-impl<'k> KrakenClient {
+impl<'a, 'k> KrakenClient {
     pub fn signature(
         &self,
         path: &str,
@@ -86,6 +105,25 @@ impl<'k> KrakenClient {
 
         // Return base64 string
         Ok(b64)
+    }
+
+    pub async fn parse(&self, p: Payloads, payload: Option<&'a Value>) -> Result<Option<&'a Value>, KrakenError> {
+        use Payloads::*;
+        let l = match payload {
+            Some(l) => l,
+            None => return Ok(None)
+        };
+
+        match p {
+            TradeBalance => {
+                let _: crate::kraken::TradeBalance = serde_json::from_value(l.clone())?;
+                Ok(payload)
+            },
+            OpenOrders => {
+                let _: crate::kraken::OpenOrders = serde_json::from_value(l.clone())?;
+                Ok(payload)
+            }
+        }
     }
 
     pub async fn headers(&self, sig: Option<String>) -> Result<HeaderMap, KrakenError> {
@@ -209,25 +247,12 @@ impl<'k> KrakenClient {
     }
 
     pub async fn trade_balance(&self, payload: Option<Value>) -> Result<String, KrakenError> {
-        use serde::Deserialize;
-        
-        #[derive(Deserialize)]
-        #[allow(dead_code)]
-        struct FORMAT {
-            asset: String
-        }
-
-        let payload_parsed = match payload {
-            Some(p) => {
-                let _: FORMAT = serde_json::from_value(p.clone()).unwrap();
-                Some(p)
-            },
-            None => None
-        };
-        Ok(self.private("TradeBalance", payload_parsed).await?)
+        self.parse(Payloads::TradeBalance, payload.as_ref()).await?;
+        Ok(self.private("TradeBalance", payload).await?)
     }
 
     pub async fn open_orders(&self, payload: Option<Value>) -> Result<String, KrakenError> {
+        self.parse(Payloads::OpenOrders, payload.as_ref()).await?;
         Ok(self.private("OpenOrders", payload).await?)
     }
 
