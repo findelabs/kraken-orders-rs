@@ -276,6 +276,7 @@ impl<'a, 'k> KrakenClient {
     }
 
     pub async fn closed_orders(&self, payload: Option<Value>) -> Result<String, KrakenError> {
+        self.parse(Payloads::ClosedOrders, payload.as_ref()).await?;
         Ok(self.private("ClosedOrders", payload).await?)
     }
 
