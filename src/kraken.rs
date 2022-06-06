@@ -26,8 +26,8 @@ struct TradeBalance {
 #[derive(Deserialize)]
 #[allow(dead_code)]
 struct OpenOrders {
-    trades: bool,
-    userref: u32
+    trades: Option<bool>,
+    userref: Option<u32>
 }
 
 #[derive(Debug, Clone)]
