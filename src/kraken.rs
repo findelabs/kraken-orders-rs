@@ -14,7 +14,8 @@ pub const API_VER: &str = "0";
 
 pub enum Payloads {
     TradeBalance,
-    OpenOrders
+    OpenOrders,
+    ClosedOrders
 }
 
 #[derive(Deserialize)]
@@ -28,6 +29,17 @@ struct TradeBalance {
 struct OpenOrders {
     trades: Option<bool>,
     userref: Option<u32>
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+struct ClosedOrders {
+    trades: Option<bool>,
+    userref: Option<u32>,
+    start: Option<u32>,
+    end: Option<u32>,
+    ofs: Option<u32>,
+    closetime: Option<String>
 }
 
 #[derive(Debug, Clone)]
@@ -121,6 +133,10 @@ impl<'a, 'k> KrakenClient {
             },
             OpenOrders => {
                 let _: crate::kraken::OpenOrders = serde_json::from_value(l.clone())?;
+                Ok(payload)
+            }
+            ClosedOrders => {
+                let _: crate::kraken::ClosedOrders = serde_json::from_value(l.clone())?;
                 Ok(payload)
             }
         }
